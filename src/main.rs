@@ -3,12 +3,6 @@ use raylib::prelude::*;
 const MAX_BUNNIES: usize = 300_000;
 const MAX_BATCH_ELEMENTS: usize = 8192;
 
-struct Bunny {
-    position: Vector2,
-    speed: Vector2,
-    color: Color,
-}
-
 fn main() {
     let screen_width = 1280;
     let screen_height = 720;
@@ -22,28 +16,28 @@ fn main() {
     let tex_w = tex.width();
     let tex_h = tex.height();
 
-    let mut bunnies: Vec<Bunny> = Vec::with_capacity(MAX_BUNNIES);
+    let mut positions: Vec<Vector2> = Vec::with_capacity(MAX_BUNNIES);
+    let mut speeds: Vec<Vector2> = Vec::with_capacity(MAX_BUNNIES);
+    let mut colors: Vec<Color> = Vec::with_capacity(MAX_BUNNIES);
 
     let mut paused = false;
 
     while !rl.window_should_close() {
         if rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT) {
             for _ in 0..100 {
-                if bunnies.len() < MAX_BUNNIES {
+                if positions.len() < MAX_BUNNIES {
                     let mouse_pos = rl.get_mouse_position();
-                    bunnies.push(Bunny {
-                        position: mouse_pos,
-                        speed: Vector2::new(
-                            rl.get_random_value::<i32>(-250..=250) as f32,
-                            rl.get_random_value::<i32>(-250..=250) as f32,
-                        ),
-                        color: Color::new(
-                            rl.get_random_value::<i32>(50..=240) as u8,
-                            rl.get_random_value::<i32>(80..=240) as u8,
-                            rl.get_random_value::<i32>(100..=240) as u8,
-                            255,
-                        ),
-                    });
+                    positions.push(mouse_pos);
+                    speeds.push(Vector2::new(
+                        rl.get_random_value::<i32>(-250..=250) as f32,
+                        rl.get_random_value::<i32>(-250..=250) as f32,
+                    ));
+                    colors.push(Color::new(
+                        rl.get_random_value::<i32>(50..=240) as u8,
+                        rl.get_random_value::<i32>(80..=240) as u8,
+                        rl.get_random_value::<i32>(100..=240) as u8,
+                        255,
+                    ));
                 }
             }
         }
@@ -57,19 +51,19 @@ fn main() {
             let screen_w = rl.get_screen_width() as f32;
             let screen_h = rl.get_screen_height() as f32;
 
-            for bunny in &mut bunnies {
-                bunny.position.x += bunny.speed.x * dt;
-                bunny.position.y += bunny.speed.y * dt;
+            for (position, speed) in positions.iter_mut().zip(speeds.iter_mut()) {
+                position.x += speed.x * dt;
+                position.y += speed.y * dt;
 
-                if (bunny.position.x + tex_w as f32 / 2.0) > screen_w
-                    || (bunny.position.x + tex_w as f32 / 2.0) < 0.0
+                if (position.x + tex_w as f32 / 2.0) > screen_w
+                    || (position.x + tex_w as f32 / 2.0) < 0.0
                 {
-                    bunny.speed.x *= -1.0;
+                    speed.x *= -1.0;
                 }
-                if (bunny.position.y + tex_h as f32 / 2.0) > screen_h
-                    || (bunny.position.y + tex_h as f32 / 2.0 - 40.0) < 0.0
+                if (position.y + tex_h as f32 / 2.0) > screen_h
+                    || (position.y + tex_h as f32 / 2.0 - 40.0) < 0.0
                 {
-                    bunny.speed.y *= -1.0;
+                    speed.y *= -1.0;
                 }
             }
         }
@@ -78,18 +72,13 @@ fn main() {
             let mut d = rl.begin_drawing(&thread);
             d.clear_background(Color::RAYWHITE);
 
-            for bunny in &bunnies {
-                d.draw_texture(
-                    &tex,
-                    bunny.position.x as i32,
-                    bunny.position.y as i32,
-                    bunny.color,
-                );
+            for (position, color) in positions.iter().zip(colors.iter()) {
+                d.draw_texture(&tex, position.x as i32, position.y as i32, *color);
             }
 
             d.draw_rectangle(0, 0, screen_width, 40, Color::BLACK);
             d.draw_text(
-                &format!("bunnies: {}", bunnies.len()),
+                &format!("bunnies: {}", positions.len()),
                 120,
                 10,
                 20,
@@ -98,7 +87,7 @@ fn main() {
             d.draw_text(
                 &format!(
                     "batched draw calls: {}",
-                    1 + bunnies.len() / MAX_BATCH_ELEMENTS
+                    1 + positions.len() / MAX_BATCH_ELEMENTS
                 ),
                 320,
                 10,
